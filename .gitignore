@@ -1,0 +1,17 @@
+Makefile
+build/*
+*.eep
+*.elf
+*.lss
+*.lst
+*.map
+*.sym
+*.hex
+*.o
+.dep/
+*.xlsx
+*.png
+*.jpg
+
+DerivedData/
+*xcdebugger*
