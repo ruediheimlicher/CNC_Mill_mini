@@ -1,0 +1,13 @@
+Drill
+1. Bohrer auf z0 stellen
+2. Startloch bohren
+3. Drill up 1x
+4. Print am Startloch fixieren
+5. Kontrolloch anfahren
+6. Platine richten
+7. Zurück zum Startpunkt
+8. Bohrer auf z0 stellen
+9. Drill up 2x
+10. mov
+11. Motor an
+12  Start

@@ -1514,7 +1514,7 @@ class rPCB: rViewController
       // transform: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
       let labelarray:[String] = ["id","cx","cy","transform"] // relevante daten
       let drillarray = DrillDaten(tiefe: drillweg)
-      var dateiname = ""
+      var dateiname:String = ""
       var dateisuffix = ""
       var urlstring:String = ""
       //var fileURL:URL 
@@ -1526,7 +1526,11 @@ class rPCB: rViewController
       print("report_readSVG fileURL: \(fileURL)")
       
       dateiname = dateiname.components(separatedBy: ".").first ?? "-"
-      SVG_Pfad.stringValue = dateiname
+      let converteddateiname = dateiname.replacingOccurrences(of: "%20", with: " ")
+      print(converteddateiname) // Output: "Hello World"
+      SVG_Pfad.stringValue = converteddateiname
+       //
+      
 
       /*
       if readSVG_Pop.titleOfSelectedItem == "Neu"
@@ -1600,7 +1604,7 @@ class rPCB: rViewController
             
             // SVG
             let SVG_data = try String(contentsOf: fileURL , encoding: String.Encoding.utf8)
-            print("SVGdata: \(SVG_data)")
+            //print("SVGdata: \(SVG_data)")
             //let anz = SVG_data.count
             //print("SVGdata count: \(anz)")
             
@@ -3003,6 +3007,41 @@ class rPCB: rViewController
       CNC_DatendicArray.removeAll()
       
       dataTable.reloadData()
+      Plattefeld.clearWeg()
+      Plattefeld.needsDisplay = true
+      lastklickposition.x = 0
+      lastklickposition.y = 0
+      
+      print("PCB reportclear homeX: \(homeX) homeY: \(homeY)")
+      homeX = 0
+      homeY = 0
+      homexFeld.integerValue = 0
+      homeyFeld.integerValue = 0
+   }
+   
+   @IBAction func report_clear_weg(_ sender: NSButton)
+   {
+      print("\n           PCB report_clear_weg")
+      teensy.write_byteArray[24] = 0xF3
+      
+      //write_CNC_Abschnitt()
+      //    if (usbstatus > 0)
+      //    {
+      //let senderfolg = teensy.send_USB()
+      //print("PCB report_clear_weg senderfolg: \(senderfolg)")
+      //    }
+     
+      Plattefeld.clearMark()
+      
+      return
+      ablaufzeitFeld.stringValue = zeitformatter.string(from: TimeInterval(0))!
+      cncstepperposition = 0
+      //teensy.clear_writearray()
+      //Schnittdatenarray.removeAll()
+      //circlearray.removeAll()
+      //CNC_DatendicArray.removeAll()
+      
+      //dataTable.reloadData()
       Plattefeld.clearWeg()
       Plattefeld.needsDisplay = true
       lastklickposition.x = 0

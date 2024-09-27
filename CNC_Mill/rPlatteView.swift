@@ -714,6 +714,10 @@ class rPlatteView: NSView
    {
 
       //Swift.print( "clearMark markfeldarray: \(markfeldarray)")
+      kreuz.removeAllPoints()
+      //NSColor.white.set() // 
+      
+      klickmarkIndexset.removeAll()
       setStepperposition(pos: 0)
       needsDisplay = true
    }
