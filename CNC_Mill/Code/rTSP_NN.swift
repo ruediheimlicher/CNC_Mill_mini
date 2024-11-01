@@ -68,7 +68,7 @@ class rTSP_NN:NSObject
          }
          plan[anzahl - 1].next = 0
       }
-      print("firstrun plan: \(plan)")
+      //print("firstrun plan: \(plan)")
    }// firstrun
    
    func entfernung(a:Int, b:Int)->Double

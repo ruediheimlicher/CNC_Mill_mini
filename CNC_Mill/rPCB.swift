@@ -1118,7 +1118,7 @@ class rPCB: rViewController
    
    func punktarrayvonTXT(txtarray: [String])->[[Double]]
    {
-      let minabstand = 2
+      let minabstand = 1.8
       var k=0
       var punktarray = [[Double]]()
       var txtpunktarray = [[Double]]()
@@ -1165,9 +1165,9 @@ class rPCB: rViewController
                   let tempcheckx = Double(checkpunktarray[1]) 
                   let tempchecky = Double(checkpunktarray[2])
                   
-                  let abstand = hypot(((tempcheckx ?? 0) - (checkx ?? 0)),((tempchecky ?? 0) - (checky ?? 0)))
+                  let abstand:Double = hypot(((tempcheckx ?? 0) - (checkx ?? 0)),((tempchecky ?? 0) - (checky ?? 0)))
                   //print("kk: \(kk) abstand: \(abstand)")
-                  if Int(abstand) < minabstand
+                  if abstand < minabstand
                   { 
                      nearindexset.insert(kk)
                      if k > doppelindex
@@ -1625,7 +1625,7 @@ class rPCB: rViewController
             //print("punktarray: \(punktarray)")
             break
             
-            case "txt":
+         case "txt":
             print("suffix: \(dateisuffix)")
             let TXT_data = try String(contentsOf: fileURL , encoding: String.Encoding.utf8)
             //print("TXT_data: \(TXT_data)")
@@ -1636,7 +1636,7 @@ class rPCB: rViewController
             let TXT_text = TXT_data.components(separatedBy: "\n")
             // print("TXT_data: \(TXT_data)")
             let TXT_array = Array(TXT_text)
-
+            
             //var txtdata = punktarrayvonTXT(txtarray:TXT_array)
             punktarray = punktarrayvonTXT(txtarray:TXT_array)
             if punktarray.count == 0
@@ -1644,11 +1644,11 @@ class rPCB: rViewController
                
                return
             }
-
-
+            
+            
             break
-         
-         
+            
+            
          default:
             break
          }
@@ -1923,14 +1923,12 @@ class rPCB: rViewController
          }
 
          print("report_readSVG circlefloatarray nach eckelinksunten. count: \(circlefloatarray.count)")         
-          
-         /*
          for el in circlefloatarray
           {
             print("\(el[0] )\t \(el[1] )\t \(el[2]) \t\(el[3])")
             
           }
-*/
+
 
     
          circlefloatarray_raw.removeAll()
@@ -2042,13 +2040,7 @@ class rPCB: rViewController
          
          // print("mill_floatarray A")
          
-           
-         
- 
-         
-         
-         
-         stepperschritteFeld.integerValue = mill_floatarray.count-1   
+             stepperschritteFeld.integerValue = mill_floatarray.count-1   
          transformfaktor = 0.2
          setPCB_Output(floatarray: mill_floatarray, scale: 5, transform: transformfaktor)
          /*
@@ -2181,6 +2173,7 @@ class rPCB: rViewController
       
        
       lasttabledataindex = 0
+      MotorKnopf.state = NSControl.StateValue.off
       /*
       print("report_readSVG Schnittdatenarray")
       for el in Schnittdatenarray
@@ -2898,14 +2891,14 @@ class rPCB: rViewController
       let anzabschnitte = Schnittdatenarray.count
       
        
-      if Schnittdatenarray.count == 0 // Array im Teensy loeschen
+      if Schnittdatenarray.count == 0 // > Array im Teensy loeschen
       {
          teensy.write_byteArray[25] = 1 //erstes Element
          teensy.write_byteArray[24] = 0xF1 // Stopp
  //        if teensy.dev_present() > 0
  //        {
             let senderfolg = teensy.send_USB()
-            //            print("report_send_Daten report_goXY senderfolg: \(senderfolg)")
+         print("report_send_Daten report_goXY senderfolg: \(senderfolg)")
  //        }
          teensy.clear_writearray()
          return
@@ -3032,6 +3025,7 @@ class rPCB: rViewController
       //    }
      
       Plattefeld.clearMark()
+      stepperpositionFeld.integerValue = 0
       
       return
       ablaufzeitFeld.stringValue = zeitformatter.string(from: TimeInterval(0))!
@@ -4336,14 +4330,15 @@ class rPCB: rViewController
       
    }
 
-   func stopDrillmotor_stop()
+   func Drillmotor_stop()
    {
-      print("report_Drillmotor_stop")
+      print("Drillmotor_stop")
+      //return;
       teensy.write_byteArray[24] = 0xDA // Code 
       teensy.write_byteArray[DRILL_BIT] = 0
          let senderfolg = teensy.send_USB()
          print("report_HALT senderfolg: \(senderfolg)")
-
+      MotorKnopf.state = NSControl.StateValue.off
       
    }
 
@@ -4544,6 +4539,11 @@ class rPCB: rViewController
       }
       print("*********************************************************\n")
 */
+      for line in Schnittdatenarray
+      {
+         print(line)
+      }
+
       if teensy.readtimervalid() == true
       {
          //print("PCB readtimer valid vor")
@@ -4850,8 +4850,11 @@ class rPCB: rViewController
             Plattefeld.setStepperposition(pos:ladepos)
             
             print("newDataAktion  AD abschnittnummer: \(abschnittnum) ladepos: \(ladepos)")
+            if(abschnittnum > 0)
+            {
+               Drillmotor_stop()
+            }
             
-            stopDrillmotor_stop()
             
             notificationDic["taskcode"] = taskcode
             
@@ -5118,7 +5121,7 @@ class rPCB: rViewController
             
             var abschnittnummer:Int = Int(((d5 << 8) | (d6 )))
             let ladepos =  Int(data[8] )
-            print("newDataAktion  D6 abschnittnummer: \(abschnittnummer) cncstepperposition: \(cncstepperposition) ladepos: \(ladepos)")
+            //print("newDataAktion  D6 abschnittnummer: \(abschnittnummer) cncstepperposition: \(cncstepperposition) ladepos: \(ladepos)")
             //print("\(abschnittnummer)\t\(pd4(responsezeit))\t \(pd3(usbzeit)) \t\(pd3(taskzeit))")
             //print("\(abschnittnummer)\t\(pd3(usbzeit)) \t\(pd3(taskzeit)) ")
             //print("\(abschnittnummer)")
