@@ -238,7 +238,7 @@ const char* get_prod(void)
       CFTypeRef prod= IOHIDDeviceGetProperty(cnc->ref,CFSTR(kIOHIDProductKey));
       //CFStringRef manu = (CFStringRef)prop;
       const char* prodstr = CFStringGetCStringPtr(prod, kCFStringEncodingMacRoman);
-      fprintf(stderr,"get_prod prodstr: %s\n",prodstr);
+      //fprintf(stderr,"get_prod prodstr: %s\n",prodstr);
       
       return  prodstr; 
    }

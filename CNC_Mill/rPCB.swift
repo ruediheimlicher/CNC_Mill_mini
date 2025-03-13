@@ -644,7 +644,7 @@ class rPCB: rViewController
    
    func tableViewSelectionDidChange(_ notification: Notification) 
    {
-      //     print("tableView  tableViewSelectionDidChange notification: \(notification)")
+      print("tableView  tableViewSelectionDidChange notification: \(notification)")
       let selectedRow = (notification.object as! NSTableView).selectedRow
       print("tableView  tableViewSelectionDidChange selectedRow: \(selectedRow)")
       
@@ -1690,7 +1690,9 @@ class rPCB: rViewController
           iii += 1
           }
  */
-           
+         print("circlefloatarray")
+         print_svgarray(floatarr: circlefloatarray)
+         
          teensy.clear_writearray()
          
          // https://useyourloaf.com/blog/sorting-an-array-of-dictionaries/
@@ -1712,7 +1714,9 @@ class rPCB: rViewController
             break
          }
  
-         
+         print("sortedfloatarray")
+         print_svgarray(floatarr: sortedfloatarray)
+
   /*       
          //
          switch horizontal_checkbox.state
@@ -1789,6 +1793,7 @@ class rPCB: rViewController
          }
 
          
+         
          /*
           print("report_readSVG circlefloatarray B vor.  count: \(circlefloatarray.count)")
           for el in circlefloatarray
@@ -1839,6 +1844,9 @@ class rPCB: rViewController
          } // for datazeile
          print("report_readSVG  doppelcount 2: \(doppelcount )")
          
+         print("ciclefloatarray B")
+         print_svgarray(floatarr: circlefloatarray)
+
          /*
           print("report_readSVG circlearray nach. count: \(circlearray.count)")
           for el in circlearray
@@ -1878,7 +1886,9 @@ class rPCB: rViewController
          
          circlefloatarray = flipSVG(svgarray: circlefloatarray)  
          
-         
+         print("sortedfloatarray flip")
+         print_svgarray(floatarr: sortedfloatarray)
+
          
          // definitever circlefloatarray
          /*
@@ -2245,13 +2255,13 @@ class rPCB: rViewController
    {
       print("setPCB_Output Start transform: \(transform)")
       
-        /* 
+         
        print("setPCB_Output floatarray: \(floatarray.count)")
        for el in floatarray
        {
        print("\(el[0] )\t \(el[1] )\t \(el[2])")
        }
-       */
+       
       //     Plattefeld.setStepperposition(pos: 0)
       let l = Plattefeld.setfloatWeg(newWeg: floatarray, scalefaktor: scale, transform:  transform)
       
@@ -2288,13 +2298,13 @@ class rPCB: rViewController
          //      print("zeilendic: \(zeilendic)")
          CNC_DatendicArray.append(zeilendic)
          
-         /*
+         
           print("report_readSVG CNC_DatendicArray")
           for el in CNC_DatendicArray
           {
-          print("\(el["ind"] ) \(el["X"] ) \(el["Y"] )")
+          //print("\(el["ind"] ) \(el["X"] ) \(el["Y"] )")
           }
-          */
+          
          //dataTable.reloadData()
           
          lasttabledataindex = 0 // Zeile 0 in circlearray
@@ -2353,6 +2363,7 @@ class rPCB: rViewController
       
    }
    
+   
    func print_tabzeile(_ floatarray:[UInt8]) // String mit tabs
    {
       //https://docs.swift.org/swift-book/LanguageGuide/Functions.html
@@ -2371,6 +2382,17 @@ class rPCB: rViewController
       print(zeilenstring)
    }
 
+   func print_svgarray(floatarr:[[Double]])
+   {
+      print("print_svgarray  count: \(floatarr.count)")
+      var ii = 0
+      for el in floatarr
+      {
+         print("\(ii)\t\(el[0])\t \(el[1])\t ")
+         ii += 1
+      }
+   }
+   
    
    func PCB_Abs_Daten(floatarray:[[Double]])->[[UInt8]]
    {
@@ -3762,10 +3784,12 @@ class rPCB: rViewController
          }
   
          //Drillspeed
-         teensy.write_byteArray[20] = UInt8(drillspeedFeld.integerValue & 0x000000FF)
-         teensy.write_byteArray[21] = UInt8((drillspeedFeld.integerValue & 0x0000FF00) >> 8)
+         var Drillspeed = drillspeedFeld.integerValue / 2
+         
+         teensy.write_byteArray[20] = UInt8(Drillspeed & 0x000000FF)
+         teensy.write_byteArray[21] = UInt8((Drillspeed & 0x0000FF00) >> 8)
         
-  //       print("write_CNC_Zeile  write_byteArray: \(teensy.write_byteArray)")
+  //       print("write_CNC_Zeile  write_byteArray: \(teensy.write_byteArray)")x
   //       print("    write_byteArray24: \(teensy.write_byteArray[24])")
   //       print("write_CNC_Zeile    write_byteArray38: \(teensy.write_byteArray[38])")
          
