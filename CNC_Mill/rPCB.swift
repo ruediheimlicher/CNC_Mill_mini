@@ -41,6 +41,8 @@ class rPCB: rViewController
    
    var circlefloatarray_raw = [[Double]]() // Koordinaten der Punkte aus input
    
+   var polylinepunktarray = [[Double]]()
+   
    var maxdiff:Double = 100 // maximale differenz fuer doppelte Punkte
    var maxfloatdiff:Double = 5 // maximale differenz fuer doppelte Float-Punkte
    
@@ -112,6 +114,8 @@ class rPCB: rViewController
    
    var now = Date()
    var startzeit = Date()
+   
+   var taskpopitems = [String]()
    
    var zeitformatter = DateComponentsFormatter()
    
@@ -190,6 +194,8 @@ class rPCB: rViewController
    //@IBOutlet weak var Zeilen_Stepper: NSStepper!
    
    @IBOutlet weak var PauseKnopf: NSButton!
+   
+   @IBOutlet weak var TaskPop: NSPopUpButton!
    
     
    override func viewDidAppear() 
@@ -431,6 +437,15 @@ class rPCB: rViewController
       
        
       teensy.write_byteArray[DRILL_BIT] = 0
+      
+      // Taskpop
+      taskpopitems.append("PCB")
+      taskpopitems.append("Poly")
+      TaskPop.removeAllItems()
+      for taskitem in taskpopitems
+      {
+         TaskPop.addItem(withTitle: taskitem)
+      }
    }
    
    @objc override func beendenAktion(_ notification:Notification)
@@ -1249,10 +1264,18 @@ class rPCB: rViewController
       
       var circleorellipsefloatelementarray = [Double]()
       
+      // polyline
+      var polycount = 0
+      var polylinenummer = 0
+      var polylineelementdic = [String:Int]()
+      
+      // polyline
       var transformdoublearray = [Double]()
       var transformok = 0 //1: transform ist vorhanden
+      var poly = 0;
+      
       // transform: https://developer.mozilla.org/en-US/docs/Web/SVG/Attribute/transform
-      let labelarray:[String] = ["cx","cy","transform"] // relevante daten
+      let labelarray:[String] = ["cx","cy","transform","points"] // points neu fuer polyline // relevante daten
       let lastlabel:String = String(labelarray.last ?? "") // label "transform"
       var zeilenindex:Double = 0
       var circlecount = 0
@@ -1300,7 +1323,7 @@ class rPCB: rViewController
                {
                   
                   let firstelement:String = String(zeilenarray[0]) // label
-                 //print("i: \(i) zeilenindex: \(zeilenindex) \t firstelement: \t*\(firstelement)*")
+                  //print("i: \(i) zeilenindex: \(zeilenindex) \t firstelement: \t*\(firstelement)*")
                   
                   let contains = labelarray.contains(where:{$0 == firstelement})
                   
@@ -1343,17 +1366,17 @@ class rPCB: rViewController
                         circleorellipsefloatelementarray.append(partfloat)
                         
                      }
-                       // Floatwerte
+                     // Floatwerte
                   }
                   else if (firstelement == "r")
                   {
                      circle = 1
                      //print("circle ist 1 zeilenindex: \(zeilenindex) firstelement ist r circlecount: \(circlecount) circlecountB: \(circlecountB) circleorellipsefloatelementarray: \(circleorellipsefloatelementarray)\n")
- 
-                  }
-               
                      
-                     } // if zeilenarray.count > 1
+                  }
+                  
+                  
+               } // if zeilenarray.count > 1
                else  
                {
                   // arrays aufbauen
@@ -1442,6 +1465,66 @@ class rPCB: rViewController
             circle -= 1
             
          }// circle > 0
+         
+         // polyli9ne
+         /*
+          <polyline
+               style="fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:0.560891568661"
+               id="DCD2298C"
+               points="53.1781020343,171.627320784 0.330445784331,97.8616957843 39.6390395343,13.0491957843 73.3851332843,0.33044578433"/>
+
+          
+          */
+         // MARK: POLYLINE
+         if (trimmzeile.contains("polyline") )
+         {
+            print("polyline da: \(trimmzeile)")
+            poly = 5
+            polylinenummer = i
+            polycount += 1
+            polylineelementdic.removeAll()
+         
+         }
+         
+         if poly > 0 // Polyline detektiert
+         {
+            if poly < 5
+            {
+               let zeilenarray = trimmzeile.split(separator: "=") // aufteilen in label und data
+
+               if zeilenarray.count > 1 // == ist da
+               {
+                  let firstelement:String = String(zeilenarray[0]) // label
+                  //print("i: \(i) zeilenindex: \(zeilenindex) \t firstelement: \t*\(firstelement)*")
+                  let contains = labelarray.contains(where:{$0 == firstelement})
+                  if contains == true // zeile ist relevant
+                  {
+                     // Daten hinter "=" separieren
+                     var partB = zeilenarray[1].replacingOccurrences(of: "\"", with: "")
+                     partB = partB.replacingOccurrences(of: "/>", with: "")
+                     //print("polyline i: \(i) \t firstelement: \t \(firstelement) \t partB neu: \t\(partB)\n")
+                     print("polyline i: \(i) \t partB neu: \t\(partB)\n")
+                     let polypunktarray = partB.split(separator: " ");
+                     print("polyline i: \(i) \t polypunktarray: \t\(punktarray)\n")
+                     for zeile in polypunktarray
+                     {
+                        print("zeile: \(zeile)")
+                        //punktarray.append(zeile)
+                        let zeilenpunkt = zeile.split(separator: ",")
+                        print("zeilenpunkt: \(zeilenpunkt)")
+                        var zeilenpunktarray =  zeilenpunkt.compactMap { Double($0) }
+                        zeilenpunktarray.append(0.0)
+                        print("zeilenpunktarray: \(zeilenpunktarray)")
+                        punktarray.append(zeilenpunktarray)
+                     }
+                  }
+               }
+            }// poly < 5
+            poly = poly - 1 
+         }
+         
+         
+         
          i += 1
       } // for zeile
       
@@ -1529,49 +1612,49 @@ class rPCB: rViewController
       let converteddateiname = dateiname.replacingOccurrences(of: "%20", with: " ")
       print(converteddateiname) // Output: "Hello World"
       SVG_Pfad.stringValue = converteddateiname
-       //
+      //
       
-
+      
       /*
-      if readSVG_Pop.titleOfSelectedItem == "Neu"
-      {
-         //let SVG_URL = openFile()
-         // https://stackoverflow.com/questions/10016475/create-nsscrollview-programmatically-in-an-nsview-cocoa
-         guard let fileURL = openFile() else { return  }
-         
-         urlstring = fileURL.absoluteString
-         dateiname = urlstring.components(separatedBy: "/").last ?? "-"
-         print("report_readSVG fileURL: \(fileURL)")
-         dateiname = dateiname.components(separatedBy: ".").first ?? "-"
-         SVG_Pfad.stringValue = dateiname
-         
-         // https://www.dotnetperls.com/dictionary-swift
-         svgdicarray[dateiname] = urlstring
-          
-         if readSVG_Pop.itemTitles.contains(dateiname)
-         {
-            print("dateiname schon da")
-         }
-         else 
-         {
-            readSVG_Pop.insertItem(withTitle: dateiname, at: 1)
-            
-            if readSVG_Pop.numberOfItems > 5
-            {
-               readSVG_Pop.removeItem(at: 5)
-            }
-         }
-      }
-      else
-      {
-         guard let dateiname = readSVG_Pop.titleOfSelectedItem else {return}
-         guard let dateiurl = svgdicarray[dateiname] else {return}
-         urlstring = dateiurl
-      }
-      */
+       if readSVG_Pop.titleOfSelectedItem == "Neu"
+       {
+       //let SVG_URL = openFile()
+       // https://stackoverflow.com/questions/10016475/create-nsscrollview-programmatically-in-an-nsview-cocoa
+       guard let fileURL = openFile() else { return  }
+       
+       urlstring = fileURL.absoluteString
+       dateiname = urlstring.components(separatedBy: "/").last ?? "-"
+       print("report_readSVG fileURL: \(fileURL)")
+       dateiname = dateiname.components(separatedBy: ".").first ?? "-"
+       SVG_Pfad.stringValue = dateiname
+       
+       // https://www.dotnetperls.com/dictionary-swift
+       svgdicarray[dateiname] = urlstring
+       
+       if readSVG_Pop.itemTitles.contains(dateiname)
+       {
+       print("dateiname schon da")
+       }
+       else 
+       {
+       readSVG_Pop.insertItem(withTitle: dateiname, at: 1)
+       
+       if readSVG_Pop.numberOfItems > 5
+       {
+       readSVG_Pop.removeItem(at: 5)
+       }
+       }
+       }
+       else
+       {
+       guard let dateiname = readSVG_Pop.titleOfSelectedItem else {return}
+       guard let dateiurl = svgdicarray[dateiname] else {return}
+       urlstring = dateiurl
+       }
+       */
       
-  //    print(Array(svgdicarray.keys))
-  //    print(Array(svgdicarray.values))
+      //    print(Array(svgdicarray.keys))
+      //    print(Array(svgdicarray.values))
       
       var punktarray = [[Double]]()
       circledicarray.removeAll()
@@ -1619,7 +1702,6 @@ class rPCB: rViewController
             punktarray = punktarrayvonSGV(sgvarray:SVG_array)
             if punktarray.count == 0
             {
-               
                return
             }
             //print("punktarray: \(punktarray)")
@@ -1641,24 +1723,20 @@ class rPCB: rViewController
             punktarray = punktarrayvonTXT(txtarray:TXT_array)
             if punktarray.count == 0
             {
-               
                return
             }
-            
-            
-            break
-            
+            break;
             
          default:
             break
          }
-
+         
          let formater = NumberFormatter()
          formater.groupingSeparator = "."
          formater.maximumFractionDigits = 3
          formater.minimumFractionDigits = 3
          formater.numberStyle = .decimal
-
+         
          //print("report_readSVG circlefloatarray; \(circlefloatarray)")
          //print("report_readSVG punktarray; \(punktarray)")
          circlefloatarray = punktarray
@@ -1672,15 +1750,15 @@ class rPCB: rViewController
           ii += 1
           }
           */
-          /*
-         print("report_readSVG circledicarray")
-         var iii = 0
-         for el in circledicarray
-         {
-         print("\(iii) \(el)")
-         iii += 1
-         }
-*/
+         /*
+          print("report_readSVG circledicarray")
+          var iii = 0
+          for el in circledicarray
+          {
+          print("\(iii) \(el)")
+          iii += 1
+          }
+          */
          /*
           print("report_readSVG circlefloatarray A count: \(circlefloatarray.count)")
           var iii = 0
@@ -1689,398 +1767,471 @@ class rPCB: rViewController
           print("\(iii)\t\(el[1])\t \(el[2])  ")
           iii += 1
           }
- */
-         print("circlefloatarray")
-         print_svgarray(floatarr: circlefloatarray)
+          */
+         
+         print("punktarray")
+         print_array(floatarr: punktarray)
          
          teensy.clear_writearray()
          
          // https://useyourloaf.com/blog/sorting-an-array-of-dictionaries/
          var sortedarray = [[String:Int]]()  // mit circledicarray
          var sortedfloatarray = [[Double]]()
-          
+         var mill_floatarray = [[Double]]()
          
-         switch horizontal_checkbox.state
+         // MARK: *** PopTask
+         let poptaskindex = TaskPop.indexOfSelectedItem
+         switch poptaskindex
          {
-         case .off:
-            //print("horizontal_checkbox: off")
-            
-            sortedfloatarray = sortArrayofArrays(origArray:circlefloatarray, index:1, order:false)
-         case .on:
-             
-            sortedfloatarray = sortArrayofArrays(origArray:circlefloatarray, index:2, order:false)
-            
-         default:
-            break
-         }
- 
-         print("sortedfloatarray")
-         print_svgarray(floatarr: sortedfloatarray)
-
-  /*       
-         //
-         switch horizontal_checkbox.state
-         {
-         case .off:
-            //print("horizontal_checkbox: off")
-            sortedfloatarray = circlefloatarray.sorted(by: {
-                                                         ($0[1]) < ($1[1])})
-         case .on:
-            //print("horizontal_checkbox: on")
-            sortedfloatarray = circlefloatarray.sorted(by: {
-                                                         ($0[2]) < ($1[2])})
-         default:
-            break
-         }
-*/
-         
-         //
-         
-         
- /*       
-          print("report_readSVG sortedarray")
-          var iiii = 0
-          iiii = 0
-          for el in sortedarray
-          {
-          print("\(iiii) \(el)")
-          iiii += 1
-          }
- */        
-
-         //print("PCB sortedarray")
-         //print(sortedarray)
-         circlearray.removeAll()
-         var zeilendicindex:Int = 0
-         for zeilendic in sortedarray //
-         {
-            let cx:Int = (zeilendic["cx"]!) 
-            let cy:Int = (zeilendic["cy"]!) 
-            let cz:Int = (zeilendic["cz"]!) 
-            let zeilenarray = [zeilendicindex,cx,cy,cz]
-            circlearray.append(zeilenarray)
-            zeilendicindex += 1
-         }
-         /*
-          print("report_readSVG circlearray vor.  count: \(circlearray.count)")
-          for el in circlearray
-          {
-          print("\(el[0] )\t \(el[1] ) \(el[2])")
-          }
-          for pos in 0..<circlearray.count
-          {
-          circlearray[pos][0] = pos
-          }
-          */
-    
-         // float
-         
-         circlefloatarray.removeAll()
-          zeilendicindex = 0
-         for zeilendic in sortedfloatarray // Floatzahlen neu
-         {
-            let cx:Double = (zeilendic[0]) 
-            let cy:Double = (zeilendic[1]) 
-            let cz:Double = (zeilendic[2])
-            let eckedistanz:Double = hypot(cx,cy) //pow(cx,2) + pow(cy,2)
-            let zeilenarray = [Double(zeilendicindex),cx,cy,cz,eckedistanz]
-
-            // print("\(zeilendicindex) \(cx) \(cy)")
-
-            //let zeilenarray:[Double] = [Double(zeilendicindex),cx,cy,cz]
-            circlefloatarray.append(zeilenarray)
-            zeilendicindex += 1
-         }
-
-         
-         
-         /*
-          print("report_readSVG circlefloatarray B vor.  count: \(circlefloatarray.count)")
-          for el in circlefloatarray
-          {
-            print("\(el[0] )\t \(el[1] ) \(el[2]) \(el[3])")
-          }
-          */
-         
-         
-         //  var 
-         var doppelindex:Int = 0
-         var doppelcount = 0
-         
-         // float
-         doppelindex = 0
-         doppelcount = 0
-         for datazeile in circlefloatarray
-         {
-            if doppelindex < circlefloatarray.count
+         case 0: // PCB
+            switch horizontal_checkbox.state
             {
-               let akt = circlefloatarray[doppelindex]
-               var next = [Double]()
-               var n = 1
-               while doppelindex + n < circlefloatarray.count // naechste Zeilen absuchen
-               {
-                  next = circlefloatarray[doppelindex+n]
-                  var diffX:Double = (Double((next[1] - akt[1]))) 
-                  //print(" zeile: \(doppelindex) n: \(n)\t diffX: \(diffX)")
-                  
-                  if fabs(diffX) < maxfloatdiff
-                  {
-                     //print("diffX < maxdiff  zeile: \(doppelindex) n: \(n)\t diffX: \(diffX)")
-                     var diffY:Double = (Double((next[2] - akt[2])))
-                     
-                     if fabs(diffY) < maxfloatdiff
-                     {
-                        doppelcount+=1
-                        //print(" *** diff zu klein akt zeile: \(doppelindex) n: \(n)\t diffX: \(diffX) diffY: \(diffY) ")
-                        circlefloatarray.remove(at: doppelindex + n)
-                        n -= 1 // ein element weniger, next ist bei n-1
-                     }
-                     
-                  }
-                  n += 1
-               }
-            } // if < count
-            doppelindex += 1
-         } // for datazeile
-         print("report_readSVG  doppelcount 2: \(doppelcount )")
-         
-         print("ciclefloatarray B")
-         print_svgarray(floatarr: circlefloatarray)
-
-         /*
-          print("report_readSVG circlearray nach. count: \(circlearray.count)")
-          for el in circlearray
-          {
-          
-          print("\(el[0] )\t \(el[1] )\t \(el[2])")
-          
-          }
-          */
-        /*
-          print("report_readSVG circlefloatarray nach doppel, vor flip. count: \(circlefloatarray.count)")
-          for el in circlefloatarray
-          {
-          print("\(el[0] )\t \(el[1] )\t \(el[2]) \(el[3])")
-          }
-         z = 0
-         */
-         
-         
-         let microstepindex = schritteweitepop.indexOfSelectedItem
-         let microstep = Double(schritteweitepop.itemTitle(at: microstepindex))
-         //print("microstep: \(microstep)")
-         // umnummerieren und microstep
-          // ecke links unten bestimmen
- 
-         for z in 0..<circlefloatarray.count
-         {
-            circlefloatarray[z][0] = Double(z)
-            let el1 = circlefloatarray[z][1] * (microstep ?? 1)
-            circlefloatarray[z][1] = el1
-            let el2 = circlefloatarray[z][2] * (microstep ?? 1) 
-            circlefloatarray[z][2] = el2   
-            let el3 = circlefloatarray[z][3] * (microstep ?? 1) 
-            circlefloatarray[z][3] = el3         
-         
-         }    
-         
-         circlefloatarray = flipSVG(svgarray: circlefloatarray)  
-         
-         print("sortedfloatarray flip")
-         print_svgarray(floatarr: sortedfloatarray)
-
-         
-         // definitever circlefloatarray
-         /*
-         print("report_readSVG definitiver circlefloatarray. count: \(circlefloatarray.count)")         
-          for el in circlefloatarray
-          {
-            print("\(el[0] )\t \(el[1] )\t \(el[2])  \(el[3])")
-          }
-          */
-         /*
-         let newsortedarray:[[Double]] = circlefloatarray.sorted(by: {
-                                                      ($0[2]) < ($1[2])})
-         
-         print("report_readSVG newsortedarray nach new sort. count: \(newsortedarray.count)")         
-          for el in newsortedarray
-          {
-            print("\(el[0] )\t \(el[1] )\t \(el[2])")
-          }
-         */
-         /*
-         print("report_readSVG circlefloatarray vor eckelinksunten. count: \(circlefloatarray.count)")                   
-         for el in circlefloatarray
-          {
-            print("\(el[0] )\t \(el[1] )\t \(el[2]) \t\(el[3])")
-          }
-          */
-         
-         // ecke links unten bestimmen 
-         let eckelinksuntenindex_raw = eckelinksunten(floatarray: circlefloatarray)
-         print("eckelinksuntenindex_raw: \(eckelinksuntenindex_raw)")
-
-         
-         // Element an (0)einsetzen
-         let firstzeile_raw = circlefloatarray[eckelinksuntenindex_raw]
-          circlefloatarray.remove(at:eckelinksuntenindex_raw)
-          circlefloatarray.insert(firstzeile_raw, at:0)
-         
-         // neu Nummerieren
-         for z in 0..<circlefloatarray.count
-         {
-          circlefloatarray[z][0] = Double(z)
-         }
-
-         print("report_readSVG circlefloatarray nach eckelinksunten. count: \(circlefloatarray.count)")         
-         for el in circlefloatarray
-          {
-            print("\(el[0] )\t \(el[1] )\t \(el[2]) \t\(el[3])")
-            
-          }
-
-
-    
-         circlefloatarray_raw.removeAll()
-         
-         
-         circlefloatarray_raw = circlefloatarray // Eingabe sichern, ohne schliessen, ohne NN
-         
-           
-         /*
-         print("report_readSVG circlefloatarray nach new sort. count: \(circlefloatarray.count)")         
-          
-         for el in circlefloatarray
-          {
-            print("\(el[0] )\t \(el[1] )\t \(el[2]) \(el[3])")
-            
-          }
-          */
-         /* 
-         print("report_readSVG circlefloatarray_raw. count: \(circlefloatarray_raw.count)")         
-         
-         for el in circlefloatarray_raw
-          {
-            print("\(el[0] )\t \(el[1] )\t \(el[2]) \t\(el[3])")
-          }
-          */
-         
-         
-         
-         
-         // nearest neighbour stuff
-      //   tsp_nn.setkoordinaten(koord: circlefloatarray)
-      //   tsp_nn.firstrun()
-      //   tsp_nn.nearestneighbour()
-      //   let nn_array = tsp_nn.weg
-         //print("nn_array: \(nn_array)")   
-         
-        // Figur schliessen
-         
-         // Ordnen nach x,y oder nn
-         
-         
-         var mill_floatarray = mill_floatArray(circarray: circlefloatarray) //
-  
-         
-         // ecke links unten bestimmen 
-         let eckelinksuntenindex = eckelinksunten(floatarray: mill_floatarray)
-         print("eckelinksuntenindex: \(eckelinksuntenindex)")
-/*
-         // Element an (0)einsetzen
-         let firstzeile = mill_floatarray[eckelinksuntenindex]
-         mill_floatarray.remove(at:eckelinksuntenindex)
-         mill_floatarray.insert(firstzeile, at:0)
-         
-         for z in 0..<mill_floatarray.count
-         {
-            mill_floatarray[z][0] = Double(z)
-         }
-*/   
-         
-         // Figur schliessen
-         if figurschliessen_checkbox.state == .on
-         {
-              mill_floatarray.append(mill_floatarray[0])
-         }
-         else
-         {
-            
-            print("Figur nicht schliessen?")
-            let alert = NSAlert()
-            alert.messageText = "Figur schliessen?"
-            alert.informativeText = "Option ist nicht aktiviert"
-            alert.alertStyle = .warning
-            alert.addButton(withTitle: "Figur schliessen")
-            alert.addButton(withTitle: "Ignorieren")
-            // alert.addButton(withTitle: "Cancel")
-            let antwort =  alert.runModal() 
-            if antwort == .alertFirstButtonReturn
-            {
-               figurschliessen_checkbox.state = .on
-               mill_floatarray.append(mill_floatarray[0])
+            case .off:
+                sortedfloatarray = sortArrayofArrays(origArray:circlefloatarray, index:1, order:false)
+            case .on:
+               
+               sortedfloatarray = sortArrayofArrays(origArray:circlefloatarray, index:2, order:false)
+               
+            default:
+               break
             }
-            else if antwort == .alertSecondButtonReturn
+            
+            print("PCB sortedfloatarray")
+            print_array(floatarr: sortedfloatarray)
+            
+
+            //print("sortedfloatarray")
+            //print_svgarray(floatarr: sortedfloatarray)
+            
+            /*       
+             //
+             switch horizontal_checkbox.state
+             {
+             case .off:
+             //print("horizontal_checkbox: off")
+             sortedfloatarray = circlefloatarray.sorted(by: {
+             ($0[1]) < ($1[1])})
+             case .on:
+             //print("horizontal_checkbox: on")
+             sortedfloatarray = circlefloatarray.sorted(by: {
+             ($0[2]) < ($1[2])})
+             default:
+             break
+             }
+             */
+            
+            //
+            
+            
+            /*       
+             print("report_readSVG sortedarray")
+             var iiii = 0
+             iiii = 0
+             for el in sortedarray
+             {
+             print("\(iiii) \(el)")
+             iiii += 1
+             }
+             */        
+            
+            //print("PCB sortedarray")
+            //print(sortedarray)
+            circlearray.removeAll()
+            var zeilendicindex:Int = 0
+            for zeilendic in sortedarray //
             {
+               let cx:Int = (zeilendic["cx"]!) 
+               let cy:Int = (zeilendic["cy"]!) 
+               let cz:Int = (zeilendic["cz"]!) 
+               let zeilenarray = [zeilendicindex,cx,cy,cz]
+               circlearray.append(zeilenarray)
+               zeilendicindex += 1
+            }
+            
+             print("report_readSVG circlearray vor.  count: \(circlearray.count)")
+             //print_intarray(intarr: circlearray)
+            
+            // float
+            
+            circlefloatarray.removeAll()
+            zeilendicindex = 0
+            for zeilendic in sortedfloatarray // Floatzahlen neu
+            {
+               let cx:Double = (zeilendic[0]) 
+               let cy:Double = (zeilendic[1]) 
+               let cz:Double = (zeilendic[2])
+               let eckedistanz:Double = hypot(cx,cy) //pow(cx,2) + pow(cy,2)
+               let zeilenarray = [Double(zeilendicindex),cx,cy,cz,eckedistanz]
+               
+               // print("\(zeilendicindex) \(cx) \(cy)")
+               
+               //let zeilenarray:[Double] = [Double(zeilendicindex),cx,cy,cz]
+               circlefloatarray.append(zeilenarray)
+               zeilendicindex += 1
+            }
+            
+            print("report_readSVG circlefloatarray")
+            print_array(floatarr: circlefloatarray)
+
+            
+            /*
+             print("report_readSVG circlefloatarray B vor.  count: \(circlefloatarray.count)")
+             for el in circlefloatarray
+             {
+             print("\(el[0] )\t \(el[1] ) \(el[2]) \(el[3])")
+             }
+             */
+            
+            
+            //  var 
+            var doppelindex:Int = 0
+            var doppelcount = 0
+            
+            // float
+            doppelindex = 0
+            doppelcount = 0
+            for datazeile in circlefloatarray
+            {
+               if doppelindex < circlefloatarray.count
+               {
+                  let akt = circlefloatarray[doppelindex]
+                  var next = [Double]()
+                  var n = 1
+                  while doppelindex + n < circlefloatarray.count // naechste Zeilen absuchen
+                  {
+                     next = circlefloatarray[doppelindex+n]
+                     var diffX:Double = (Double((next[1] - akt[1]))) 
+                     //print(" zeile: \(doppelindex) n: \(n)\t diffX: \(diffX)")
+                     
+                     if fabs(diffX) < maxfloatdiff
+                     {
+                        //print("diffX < maxdiff  zeile: \(doppelindex) n: \(n)\t diffX: \(diffX)")
+                        var diffY:Double = (Double((next[2] - akt[2])))
+                        
+                        if fabs(diffY) < maxfloatdiff
+                        {
+                           doppelcount+=1
+                           //print(" *** diff zu klein akt zeile: \(doppelindex) n: \(n)\t diffX: \(diffX) diffY: \(diffY) ")
+                           circlefloatarray.remove(at: doppelindex + n)
+                           n -= 1 // ein element weniger, next ist bei n-1
+                        }
+                        
+                     }
+                     n += 1
+                  }
+               } // if < count
+               doppelindex += 1
+            } // for datazeile
+            print("report_readSVG  doppelcount 2: \(doppelcount )")
+            
+            print("ciclefloatarray B")
+            print_array(floatarr: circlefloatarray)
+
+            
+            /*
+             print("report_readSVG circlearray nach. count: \(circlearray.count)")
+             for el in circlearray
+             {
+             
+             print("\(el[0] )\t \(el[1] )\t \(el[2])")
+             
+             }
+             */
+            /*
+             print("report_readSVG circlefloatarray nach doppel, vor flip. count: \(circlefloatarray.count)")
+             for el in circlefloatarray
+             {
+             print("\(el[0] )\t \(el[1] )\t \(el[2]) \(el[3])")
+             }
+             z = 0
+             */
+            
+            
+            let microstepindex = schritteweitepop.indexOfSelectedItem
+            let microstep = Double(schritteweitepop.itemTitle(at: microstepindex))
+            //print("microstep: \(microstep)")
+            // umnummerieren und microstep
+            // ecke links unten bestimmen
+            
+            for z in 0..<circlefloatarray.count
+            {
+               circlefloatarray[z][0] = Double(z)
+               let el1 = circlefloatarray[z][1] * (microstep ?? 1)
+               circlefloatarray[z][1] = el1
+               let el2 = circlefloatarray[z][2] * (microstep ?? 1) 
+               circlefloatarray[z][2] = el2   
+               let el3 = circlefloatarray[z][3] * (microstep ?? 1) 
+               circlefloatarray[z][3] = el3         
+               
+            }    
+            
+            circlefloatarray = flipSVG(svgarray: circlefloatarray)  
+            
+            print("sortedfloatarray flip")
+            print_array(floatarr: sortedfloatarray)
+            
+            
+            // definitever circlefloatarray
+            /*
+             print("report_readSVG definitiver circlefloatarray. count: \(circlefloatarray.count)")         
+             for el in circlefloatarray
+             {
+             print("\(el[0] )\t \(el[1] )\t \(el[2])  \(el[3])")
+             }
+             */
+            /*
+             let newsortedarray:[[Double]] = circlefloatarray.sorted(by: {
+             ($0[2]) < ($1[2])})
+             
+             print("report_readSVG newsortedarray nach new sort. count: \(newsortedarray.count)")         
+             for el in newsortedarray
+             {
+             print("\(el[0] )\t \(el[1] )\t \(el[2])")
+             }
+             */
+            /*
+             print("report_readSVG circlefloatarray vor eckelinksunten. count: \(circlefloatarray.count)")                   
+             for el in circlefloatarray
+             {
+             print("\(el[0] )\t \(el[1] )\t \(el[2]) \t\(el[3])")
+             }
+             */
+            
+            // ecke links unten bestimmen 
+            let eckelinksuntenindex_raw = eckelinksunten(floatarray: circlefloatarray)
+            print("eckelinksuntenindex_raw: \(eckelinksuntenindex_raw)")
+            
+            
+            // Element an (0)einsetzen
+            let firstzeile_raw = circlefloatarray[eckelinksuntenindex_raw]
+            circlefloatarray.remove(at:eckelinksuntenindex_raw)
+            circlefloatarray.insert(firstzeile_raw, at:0)
+            
+            // neu Nummerieren
+            for z in 0..<circlefloatarray.count
+            {
+               circlefloatarray[z][0] = Double(z)
+            }
+            
+            print("report_readSVG circlefloatarray nach eckelinksunten. count: \(circlefloatarray.count)")         
+            for el in circlefloatarray
+            {
+               print("\(el[0] )\t \(el[1] )\t \(el[2]) \t\(el[3])")
                
             }
             
             
             
-         }
+            circlefloatarray_raw.removeAll()
+            
+            
+            circlefloatarray_raw = circlefloatarray // Eingabe sichern, ohne schliessen, ohne NN
+            
+            
+            /*
+             print("report_readSVG circlefloatarray nach new sort. count: \(circlefloatarray.count)")         
+             
+             for el in circlefloatarray
+             {
+             print("\(el[0] )\t \(el[1] )\t \(el[2]) \(el[3])")
+             
+             }
+             */
+            /* 
+             print("report_readSVG circlefloatarray_raw. count: \(circlefloatarray_raw.count)")         
+             
+             for el in circlefloatarray_raw
+             {
+             print("\(el[0] )\t \(el[1] )\t \(el[2]) \t\(el[3])")
+             }
+             */
+            
+            
+            
+            
+            // nearest neighbour stuff
+            //   tsp_nn.setkoordinaten(koord: circlefloatarray)
+            //   tsp_nn.firstrun()
+            //   tsp_nn.nearestneighbour()
+            //   let nn_array = tsp_nn.weg
+            //print("nn_array: \(nn_array)")   
+            
+            // Figur schliessen
+            
+            // Ordnen nach x,y oder nn
+            
+            
+            mill_floatarray = mill_floatArray_Funktion(circarray: circlefloatarray) //
+            
+            
+            // ecke links unten bestimmen 
+            let eckelinksuntenindex = eckelinksunten(floatarray: mill_floatarray)
+            print("eckelinksuntenindex: \(eckelinksuntenindex)")
+            /*
+             // Element an (0)einsetzen
+             let firstzeile = mill_floatarray[eckelinksuntenindex]
+             mill_floatarray.remove(at:eckelinksuntenindex)
+             mill_floatarray.insert(firstzeile, at:0)
+             
+             for z in 0..<mill_floatarray.count
+             {
+             mill_floatarray[z][0] = Double(z)
+             }
+             */   
+            
+            // Figur schliessen
+            if figurschliessen_checkbox.state == .on
+            {
+               mill_floatarray.append(mill_floatarray[0])
+            }
+            else
+            {
+               
+               print("Figur nicht schliessen?")
+               let alert = NSAlert()
+               alert.messageText = "Figur schliessen?"
+               alert.informativeText = "Option ist nicht aktiviert"
+               alert.alertStyle = .warning
+               alert.addButton(withTitle: "Figur schliessen")
+               alert.addButton(withTitle: "Ignorieren")
+               // alert.addButton(withTitle: "Cancel")
+               let antwort =  alert.runModal() 
+               if antwort == .alertFirstButtonReturn
+               {
+                  figurschliessen_checkbox.state = .on
+                  mill_floatarray.append(mill_floatarray[0])
+               }
+               else if antwort == .alertSecondButtonReturn
+               {
+                  
+               }
+               
+               
+               
+            }
+            
+            //     print(mill_floatarray)
+            
+            circlefloatarray = mill_floatarray
+            
+            /*
+             for ii in nn_array
+             {
+             nn_floatarray.append(circlefloatarray[ii])
+             }
+             */
+            /*
+             print("nn_floatarray")
+             for el in nn_floatarray
+             {
+             print("\(el)")
+             //     iii += 1
+             }
+             */
+            
+            // print("mill_floatarray A")
+            
+            stepperschritteFeld.integerValue = mill_floatarray.count-1   
+            transformfaktor = 0.2
+            setPCB_Output(floatarray: mill_floatarray, scale: 5, transform: transformfaktor)
+            /*
+             print("mill_floatarray B")
+             for el in mill_floatarray
+             {
+             print("\(el)")
+             //     iii += 1
+             }
+             */
+            
+            /*         
+             let zeile:IndexSet = [0]
+             dataTable.reloadData()
+             dataTable.selectRowIndexes(zeile, byExtendingSelection: false)
+             
+             */
+            //         lasttabledataindex = 0 // Zeile 0 in circlearray
+            
+            
+            print("mill_floatarray C")
+            for el in mill_floatarray
+            {
+               print("\(el)")
+               //     iii += 1
+            }
+            
+            // MARK: poly
+         case 1: // polyline
+            mill_floatarray.removeAll()
+            var zeilendicindex:Int = 0
+            for zeile in punktarray
+            {
+               let cx:Double = (zeile[0]) 
+               let cy:Double = (zeile[1]) 
+               let cz:Double = (0) 
+               let eckedistanz:Double = hypot(cx,cy)
+               let zeilenarray = [Double(zeilendicindex),cx,cy,cz,eckedistanz]
+               polylinepunktarray.append(zeilenarray)
+               zeilendicindex += 1
+            }
+            print("polylinepunktarray A")
+            
+            for el in polylinepunktarray
+            {
+               print("\(el)")
+            }
+             
+            // doppelte suchen
+            var doppelindex:Int = 0
+            var doppelcount = 0
+            for datazeile in polylinepunktarray
+            {
+               if doppelindex < polylinepunktarray.count
+               {
+                  let akt = polylinepunktarray[doppelindex]
+                  var next = [Double]()
+                  var n = 1
+                  while doppelindex + n < polylinepunktarray.count // naechste Zeilen absuchen
+                  {
+                     next = polylinepunktarray[doppelindex+n]
+                     var diffX:Double = (Double((next[1] - akt[1]))) 
+                     //print(" zeile: \(doppelindex) n: \(n)\t diffX: \(diffX)")
+                     
+                     if fabs(diffX) < maxfloatdiff
+                     {
+                        //print("diffX < maxdiff  zeile: \(doppelindex) n: \(n)\t diffX: \(diffX)")
+                        var diffY:Double = (Double((next[2] - akt[2])))
+                        
+                        if fabs(diffY) < maxfloatdiff
+                        {
+                           doppelcount+=1
+                           //print(" *** diff zu klein akt zeile: \(doppelindex) n: \(n)\t diffX: \(diffX) diffY: \(diffY) ")
+                           polylinepunktarray.remove(at: doppelindex + n)
+                           n -= 1 // ein element weniger, next ist bei n-1
+                        }
+                        
+                     }
+                     n += 1
+                  }
+               } // if < count
+               doppelindex += 1
+            } // for datazeile
+            
+            print("polylinepunktarray B")
+            
+            for el in polylinepunktarray
+            {
+               print("\(el)")
+               //     iii += 1
+            }
+            
+            mill_floatarray = polylinepunktarray
+            
+            break
+         default:
+            break
+            
+         }// switch poptaskindex
          
-    //     print(mill_floatarray)
-         
-         circlefloatarray = mill_floatarray
-         
-         /*
-          for ii in nn_array
-          {
-          nn_floatarray.append(circlefloatarray[ii])
-          }
-          */
-         /*
-          print("nn_floatarray")
-          for el in nn_floatarray
-          {
-          print("\(el)")
-          //     iii += 1
-          }
-          */
-         
-         // print("mill_floatarray A")
-         
-             stepperschritteFeld.integerValue = mill_floatarray.count-1   
-         transformfaktor = 0.2
-         setPCB_Output(floatarray: mill_floatarray, scale: 5, transform: transformfaktor)
-         /*
-          print("mill_floatarray B")
-          for el in mill_floatarray
-          {
-          print("\(el)")
-          //     iii += 1
-          }
-          */
-         
-/*         
-         let zeile:IndexSet = [0]
-         dataTable.reloadData()
-         dataTable.selectRowIndexes(zeile, byExtendingSelection: false)
-         
-*/
-         //         lasttabledataindex = 0 // Zeile 0 in circlearray
-         
-         /*
-          print("mill_floatarray C")
-          for el in mill_floatarray
-          {
-          print("\(el)")
-          //     iii += 1
-          }
-          */
-        
-         
-          
          // Schnittdaten erzeugen
          Schnittdatenarray.removeAll() // Array leeren
          if drillOKKnopf.state == .off
@@ -2106,13 +2257,15 @@ class rPCB: rViewController
          }
          
          
-
-         var PCBDaten = PCB_Daten(floatarray: mill_floatarray)
+         
+         let PCBDaten = PCB_Daten(floatarray: mill_floatarray)
+         
+      //   print_int8array(intarr: PCBDaten)
          
          //print_tabarray(PCBDaten)
          
          //circlefloatarray = PCBDaten
-          /*
+         /*
           print("mill_floatarray C")
           for el in mill_floatarray
           {
@@ -2138,12 +2291,12 @@ class rPCB: rViewController
           */
          
          
-        
-    /*
- print("vor: \(PCBDaten[0][0]) \(PCBDaten[PCBDaten.count - 1][0])")
-       let identischvor = (PCBDaten[0][0] == (PCBDaten[PCBDaten.count - 1][0]))
+         
+         /*
+          print("vor: \(PCBDaten[0][0]) \(PCBDaten[PCBDaten.count - 1][0])")
+          let identischvor = (PCBDaten[0][0] == (PCBDaten[PCBDaten.count - 1][0]))
           print("nach: \(PCBDaten[0][0]) \(PCBDaten[PCBDaten.count - 1][0])")
-        let identischnach = (PCBDaten[0][0] == (PCBDaten[PCBDaten.count - 1][0]))
+          let identischnach = (PCBDaten[0][0] == (PCBDaten[PCBDaten.count - 1][0]))
           */ 
          
          Schnittdatenarray.append(contentsOf:PCBDaten)
@@ -2151,20 +2304,20 @@ class rPCB: rViewController
          
          //     report_PCB_Daten(DataSendTaste)
          //1128
-        //stepperschritteFeld.integerValue = Schnittdatenarray.count
+         //stepperschritteFeld.integerValue = Schnittdatenarray.count
          //Zeilen_Stepper.maxValue = Double(Schnittdatenarray.count - 1)
          //Zeilen_Stepper.intValue = 1
-  //       stepperpositionFeld.intValue = 1
-//         homexFeld.integerValue = homeX
- //        homeyFeld.integerValue = homeY
- 
+         //       stepperpositionFeld.intValue = 1
+         //         homexFeld.integerValue = homeX
+         //        homeyFeld.integerValue = homeY
+         
          let homexstring = formater.string(from: NSNumber(value: floathomeX))
          homexFeld.stringValue = homexstring ?? "_"
          //homexFeld.doubleValue = floathomeX
          let homeystring = formater.string(from: NSNumber(value: floathomeY))
-          homeyFeld.stringValue = homeystring ?? "_"
+         homeyFeld.stringValue = homeystring ?? "_"
          //homeyFeld.doubleValue = floathomeY
-//
+         //
          let homexstring_mm = formater.string(from: NSNumber(value: floathomeX * transformfaktor))
          //homexFeld_mm.stringValue = homexstring_mm ?? "_"
          //homexFeld.doubleValue = floathomeX
@@ -2181,19 +2334,19 @@ class rPCB: rViewController
          return
       }
       
-       
+      
       lasttabledataindex = 0
       MotorKnopf.state = NSControl.StateValue.off
       /*
-      print("report_readSVG Schnittdatenarray")
-      for el in Schnittdatenarray
-      {
-         print("\(el)")
-      }
-      */
+       print("report_readSVG Schnittdatenarray")
+       for el in Schnittdatenarray
+       {
+       print("\(el)")
+       }
+       */
    }
    
-   func mill_floatArray(circarray:[[Double]])->[[Double]]
+   func mill_floatArray_Funktion(circarray:[[Double]])->[[Double]]
    {
       
       tsp_nn.setkoordinaten(koord: circarray)
@@ -2392,6 +2545,38 @@ class rPCB: rViewController
          ii += 1
       }
    }
+
+   func print_array(floatarr:[[Double]])
+   {
+      print("print_array  count: \(floatarr.count)")
+      var ii = 0
+      for el in floatarr
+      {
+         print("\(el) ")
+         
+      }
+   }
+   func print_intarray(intarr:[[Int]])
+   {
+      print("print_intarray  count: \(intarr.count)")
+      for el in intarr
+      {
+         print("\(el) ")
+         
+      }
+   }
+
+   func print_int8array(intarr:[[UInt8]])
+   {
+      print("print_intarray  count: \(intarr.count)")
+      var ii = 0
+      for el in intarr
+      {
+         print("\(el) ")
+         
+      }
+   }
+
    
    
    func PCB_Abs_Daten(floatarray:[[Double]])->[[UInt8]]
@@ -2672,9 +2857,6 @@ class rPCB: rViewController
       } // for zeilenindex
       
       // drilldown nach erstem Weg:
- 
-      
-      
       // Zeilennummern kontrollieren
       
       //var z=0
@@ -2683,8 +2865,8 @@ class rPCB: rViewController
          PCB_Datenarray[z][27] = UInt8(z & 0x00FF)
          PCB_Datenarray[z][26] = UInt8((z & 0xFF00) >> 8)
          //print("PCBzeile: \(z) \(PCB_Datenarray[z][27])")
-        //print("PCBzeile: \(z) \(PCB_Datenarray[z])")
-        
+         //print("PCBzeile: \(z) \(PCB_Datenarray[z])")
+         
       }
       //print_tabarray(PCB_Datenarray)
       return PCB_Datenarray
@@ -2709,7 +2891,7 @@ class rPCB: rViewController
       teensy.clear_writearray()
       Schnittdatenarray.removeAll()
       print("report_NN circlefloatarray.count: \(circlefloatarray.count)")
-      var mill_floatarray = mill_floatArray(circarray: circlefloatarray_raw) //
+      var mill_floatarray = mill_floatArray_Funktion(circarray: circlefloatarray_raw) //
       
       if ((figurschliessen_checkbox.state == .on) && ((mill_floatarray[0][1]) != (mill_floatarray[mill_floatarray.count - 1][1])))
       {   
@@ -2749,7 +2931,7 @@ class rPCB: rViewController
       Schnittdatenarray.removeAll()
       print("report_Drill circlefloatarray.count: \(circlefloatarray.count)")
       print("report_Drill circlefloatarray: \(circlefloatarray)")
-      var mill_floatarray = mill_floatArray(circarray: circlefloatarray_raw) 
+      var mill_floatarray = mill_floatArray_Funktion(circarray: circlefloatarray_raw) 
       
       print("report_Drill circlefloatarray: \(circlefloatarray)")
       if ((figurschliessen_checkbox.state == .on) && ((mill_floatarray[0][1]) != (mill_floatarray[mill_floatarray.count - 1][1])))
@@ -3730,6 +3912,8 @@ class rPCB: rViewController
              print("3: \(tempSchnittdatenArray[3]) ")
              */
             
+ //           dataTable.selectRowIndexes(IndexSet(integer: cncstepperposition), byExtendingSelection: false)
+ //           dataTable.scrollRowToVisible(cncstepperposition)
             
             cncstepperposition += 1
    //         nextdatenarray = Schnittdatenarray[cncstepperposition]
@@ -4155,7 +4339,8 @@ class rPCB: rViewController
       lasttabledataindex = zeile
       
       print("dataTableAktion lasttabledataindex: \(lasttabledataindex)")
-      
+//      dataTable.selectRowIndexes(IndexSet(integer: lasttabledataindex), byExtendingSelection: false)
+//      dataTable.scrollRowToVisible(lasttabledataindex)
       if Schnittdatenarray.count > zeile
       {
   //       print("datatabletask zeilenindex: \(zeile)\n Schnittdatenarray : \(Schnittdatenarray[zeile])")
