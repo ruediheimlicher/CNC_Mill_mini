@@ -756,7 +756,7 @@ class rViewController: NSViewController, NSWindowDelegate,XMLParserDelegate,NSTa
       UserDefaults.standard.set(propfaktor, forKey: "propfaktor")
       NSApplication.shared.terminate(self)
       let testpropfaktor = UserDefaults.standard.object(forKey: "propfaktor") as! Double
-      print("VC  beenden testpropfaktor: \(testpropfaktor)")
+      print("VC  beenden") // testpropfaktor: \(testpropfaktor)")
    }
 
     
